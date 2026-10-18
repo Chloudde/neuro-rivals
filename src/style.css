@@ -1208,16 +1208,26 @@ kbd {
 /* ------------------------------------------------------------ narrow */
 
 @media (max-width: 900px) {
+  /* stack the track list and options, and let the whole screen scroll as one column */
   .setup-body {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
+    pointer-events: auto;
+    padding-bottom: 16px;
   }
   .track-list {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     max-height: none;
+    overflow: visible;
+    flex-shrink: 0;
+    width: 100%;
   }
   .options {
     max-height: none;
+    overflow: visible;
+    flex-shrink: 0;
+    width: 100%;
   }
   .lab {
     flex-direction: column;

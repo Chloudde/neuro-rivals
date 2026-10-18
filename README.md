@@ -32,7 +32,8 @@ Requires Node 20+ (developed on Node 24).
 - **Nitro** meter, brake lights, tyre marks, smoke, sparks, flames and confetti
 - Car-to-car collisions with push, bump and bounce
 - Live standings, lap timer, best/last lap, speedometer, wrong-way warning and a **minimap**
-- **Ghost** of your best lap, **time trial** mode and per-track **records**
+- **Ghost** of your best lap with a live **delta** (green = ahead, red = behind), **time trial**
+  mode and per-track **records**
 - **Championship** mode: a points season (25-18-15-12-10-8-6-4) across the circuits
 - Three player **chassis** (Balanced, Speedster, Handler), colour and name
 - **Night racing** with headlight cones, screen shake, 12 achievements
@@ -53,7 +54,8 @@ Requires Node 20+ (developed on Node 24).
 - **Training Lab**: watch up to 200 cars evolve live at 1× to MAX speed, with a fitness chart, live
   view of the leader's neural network firing, adjustable mutation, save/export/import.
 - **Track editor**: click to place control points on a spline, drag to reshape, live validation
-  (corner tightness, self-overlap), test drive, export/import. Rivals can learn your tracks too.
+  (corner tightness, self-overlap), a 🎲 random circuit generator, test drive, export/import.
+  Rivals can learn your tracks too, and an all-rounder brain drives them out of the box.
 - Headless **trainer** and **race simulator** scripts (`npm run train`, `npm run sim`).
 
 ## Controls

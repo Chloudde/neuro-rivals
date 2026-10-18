@@ -237,7 +237,9 @@ export class Race {
       if (this.recordingLap) ghost = this.recorder.finish(lapTime)
       this.recorder.reset()
       this.recordingLap = true // from the line onward every lap is a full flying lap
-      const prevBest = Math.min(...car.lapTimes.slice(0, -1), Infinity)
+      // only flying laps count: lap 1 includes the run from the grid (unless it's a one-lap race)
+      const earlier = car.lapTimes.slice(this.laps === 1 ? 0 : 1, -1)
+      const prevBest = Math.min(...earlier, Infinity)
       this.events.push({
         type: 'lap',
         car: rc,

@@ -1,4 +1,5 @@
-import type { TrackDef } from './Track'
+import { mulberry32 } from './math'
+import { Track, type TrackDef } from './Track'
 
 /** The built-in circuits. Control points trace a closed loop; the first point is the start line. */
 export const BUILTIN_TRACKS: TrackDef[] = [
@@ -139,4 +140,40 @@ export const BUILTIN_TRACKS: TrackDef[] = [
 
 export function findBuiltin(id: string): TrackDef | undefined {
   return BUILTIN_TRACKS.find((t) => t.id === id)
+}
+
+/**
+ * A random closed circuit: a wobbly ring of control points around a centre, re-rolled until it
+ * passes validation (no pinched corners, no self-overlap). Deterministic for a given seed.
+ */
+export function randomTrack(seed: number, name = 'Random circuit'): TrackDef {
+  const rng = mulberry32(seed)
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const n = 9 + Math.floor(rng() * 6)
+    const scale = 900 + rng() * 700
+    // a few low-frequency bumps give long sweeping features; per-point noise adds the kinks
+    const bumps = [1, 2, 3].map(() => ({ amp: 0.1 + rng() * 0.22, phase: rng() * Math.PI * 2 }))
+    const points = Array.from({ length: n }, (_, i) => {
+      const a = ((i + (rng() - 0.5) * 0.35) / n) * Math.PI * 2
+      let r = 1
+      bumps.forEach((b, k) => (r += b.amp * Math.sin((k + 2) * a + b.phase)))
+      r *= 0.9 + rng() * 0.2
+      return {
+        x: Math.round(Math.cos(a) * r * scale * 1.35),
+        y: Math.round(Math.sin(a) * r * scale),
+      }
+    })
+    const def: TrackDef = {
+      id: `random-${seed.toString(36)}`,
+      name,
+      width: 130 + Math.round(rng() * 4) * 10,
+      points,
+      custom: true,
+      difficulty: 3,
+      blurb: 'A randomly generated circuit.',
+    }
+    if (new Track(def).validate().ok) return def
+  }
+  // astronomically unlikely, but never return nothing
+  return { ...BUILTIN_TRACKS[0], id: `random-${seed.toString(36)}`, name, custom: true }
 }

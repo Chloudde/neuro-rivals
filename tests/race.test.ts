@@ -64,6 +64,27 @@ describe('Race', () => {
     expect(race.player!.finishRank).toBeGreaterThan(0)
   })
 
+  it('only treats flying laps as best-lap candidates and records a ghost for them', () => {
+    const race = new Race({ track, laps: 3, entrants: entrants(0), countdown: 0.05 })
+    const lapEvents: { lap: number; isBest: boolean; hasGhost: boolean }[] = []
+    for (let i = 0; i < 60 * 150 && race.state !== 'finished'; i++) {
+      const c = race.player!.car
+      const next = track.center[(c.trackIndex + 6) % track.count]
+      let err = Math.atan2(next.y - c.pos.y, next.x - c.pos.x) - c.angle
+      while (err > Math.PI) err -= Math.PI * 2
+      while (err < -Math.PI) err += Math.PI * 2
+      race.step({ throttle: 0.7, steer: Math.max(-1, Math.min(1, err * 2.5)) })
+      for (const e of race.drainEvents()) {
+        if (e.type === 'lap') lapEvents.push({ lap: e.lap, isBest: e.isBest, hasGhost: !!e.ghost })
+      }
+    }
+    expect(lapEvents.length).toBe(3)
+    // lap 1 starts from the grid: never a best lap, never a ghost
+    expect(lapEvents[0]).toMatchObject({ lap: 1, isBest: false, hasGhost: false })
+    // lap 2 is the first flying lap, so it is a best by definition and carries a ghost
+    expect(lapEvents[1]).toMatchObject({ lap: 2, isBest: true, hasGhost: true })
+  })
+
   it('separates overlapping cars', () => {
     const race = new Race({ track, laps: 1, entrants: entrants(1), countdown: 0.05 })
     for (let i = 0; i < 10; i++) race.step({ throttle: 0, steer: 0 })

@@ -10,7 +10,7 @@ import {
   wrapAngle,
 } from '../src/game/math'
 import { Track } from '../src/game/Track'
-import { BUILTIN_TRACKS } from '../src/game/tracks'
+import { BUILTIN_TRACKS, randomTrack } from '../src/game/tracks'
 import { ACHIEVEMENTS } from '../src/achievements'
 
 describe('math helpers', () => {
@@ -91,6 +91,16 @@ describe('track validation', () => {
       const p0 = t.center[0]
       const p1 = t.center[1]
       expect(t.start.angle).toBeCloseTo(Math.atan2(p1.y - p0.y, p1.x - p0.x), 5)
+    }
+  })
+})
+
+describe('randomTrack', () => {
+  it('always produces a valid, deterministic circuit', () => {
+    for (let seed = 1; seed <= 12; seed++) {
+      const def = randomTrack(seed * 31)
+      expect(new Track(def).validate().ok).toBe(true)
+      expect(def.points).toEqual(randomTrack(seed * 31).points)
     }
   })
 })

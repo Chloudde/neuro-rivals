@@ -1,6 +1,7 @@
 import { sfx } from '../game/Audio'
 import { clamp, pointToSegment, type Vec2 } from '../game/math'
 import { Track, type TrackDef, type TrackReport } from '../game/Track'
+import { randomTrack } from '../game/tracks'
 import { getCustomTracks, getSettings, remove, saveCustomTracks, updateSettings } from '../storage'
 import type { App, Scene } from './App'
 import { clear, h } from './dom'
@@ -418,6 +419,13 @@ export class EditorScene implements Scene {
           class: 'btn small',
           text: '＋ New',
           onclick: () => this.switchTo(this.blank()),
+        }),
+        h('button', {
+          class: 'btn small',
+          text: '🎲 Random',
+          title: 'Generate a random valid circuit',
+          onclick: () =>
+            this.switchTo({ ...randomTrack(Date.now() % 1e9, 'Random circuit'), id: this.newId() }),
         }),
         h('button', {
           class: 'btn small',
