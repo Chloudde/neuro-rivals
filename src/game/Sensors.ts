@@ -3,37 +3,50 @@ import type { Track } from './Track'
 
 /**
  * Distance-sensing rays fanned out in front of a car.
- * Readings are normalised to 0..1 (1 = nothing within range), which is exactly
- * the shape a neural network wants as input.
+ * Readings are normalised to 0..1 (1 = nothing within range): exactly the shape a neural network
+ * wants as input. Only the track borders near the car are tested, which keeps this cheap enough to
+ * run for a whole population every physics tick.
  */
 export class Sensors {
   readonly readings: number[]
+  /** World-space ray endpoints, for debug drawing (refreshed by `update`). */
+  readonly hits: Vec2[]
+  private readonly dirs: Vec2[]
 
   constructor(
-    readonly rayCount = 7,
-    readonly fov = Math.PI * (200 / 180),
-    readonly range = 300,
+    readonly rayCount = 9,
+    readonly fov = (Math.PI * 200) / 180,
+    readonly range = 320,
   ) {
     this.readings = new Array(rayCount).fill(1)
+    this.hits = Array.from({ length: rayCount }, () => ({ x: 0, y: 0 }))
+    this.dirs = Array.from({ length: rayCount }, () => ({ x: 1, y: 0 }))
   }
 
-  /** World-space ray endpoints for debug drawing (filled by `update`). */
-  readonly hits: Vec2[] = []
+  /** `segment` is the car's current centerline segment index (from Track.project). */
+  update(pos: Vec2, angle: number, track: Track, segment: number) {
+    const n = track.count
+    const w = track.sensorWindow(this.range)
+    const first = this.rayCount === 1 ? 0 : -this.fov / 2
+    const step = this.rayCount === 1 ? 0 : this.fov / (this.rayCount - 1)
 
-  update(pos: Vec2, angle: number, track: Track) {
-    this.hits.length = 0
-    for (let i = 0; i < this.rayCount; i++) {
-      const frac = this.rayCount === 1 ? 0.5 : i / (this.rayCount - 1)
-      const a = angle - this.fov / 2 + frac * this.fov
-      const dir = { x: Math.cos(a), y: Math.sin(a) }
-
+    for (let r = 0; r < this.rayCount; r++) {
+      const a = angle + first + step * r
+      const d = this.dirs[r]
+      d.x = Math.cos(a)
+      d.y = Math.sin(a)
       let nearest = this.range
-      for (const e of track.edges) {
-        const t = raySegment(pos, dir, e.a, e.b)
+      for (let k = -w; k <= w; k++) {
+        const i = (((segment + k) % n) + n) % n
+        const j = i + 1 === n ? 0 : i + 1
+        let t = raySegment(pos, d, track.left[i], track.left[j])
+        if (t !== null && t < nearest) nearest = t
+        t = raySegment(pos, d, track.right[i], track.right[j])
         if (t !== null && t < nearest) nearest = t
       }
-      this.readings[i] = nearest / this.range
-      this.hits.push({ x: pos.x + dir.x * nearest, y: pos.y + dir.y * nearest })
+      this.readings[r] = nearest / this.range
+      this.hits[r].x = pos.x + d.x * nearest
+      this.hits[r].y = pos.y + d.y * nearest
     }
   }
 }
