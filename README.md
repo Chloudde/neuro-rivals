@@ -133,8 +133,15 @@ same code run the browser game, the in-browser Lab and the Node training scripts
 ## Deploying
 
 `npm run build` produces a static site in `dist/` (relative paths, so it works on any host).
-A manual **Deploy to Pages** workflow is included: enable _Settings → Pages → Source: GitHub Actions_,
-then run it from the Actions tab.
+The live site is published with the manual **Deploy to Pages** workflow (Actions tab → _Deploy to
+Pages_ → _Run workflow_). It needs _Settings → Pages → Source: GitHub Actions_ enabled once.
+Progress (records, ghosts, trained rivals, custom tracks) is stored per browser in `localStorage`.
+
+## Ideas for next time
+
+- More circuits, and a harder Legend tier (longer training, bigger networks)
+- Rain/weather with grip changes (the AIs would need retraining on wet physics)
+- Sector times, replays, and shareable track codes
 
 ## License
 
