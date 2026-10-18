@@ -14,6 +14,8 @@ the result. Built with TypeScript, Vite and plain HTML Canvas. No game engine, n
   <img src="docs/screenshots/results.jpg" height="360" alt="Results screen" />
 </p>
 
+**▶ Play it now: https://chloudde.github.io/neuro-rivals/**
+
 ## Quick start
 
 ```bash
