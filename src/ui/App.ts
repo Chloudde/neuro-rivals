@@ -45,6 +45,7 @@ export class App {
   readonly ui: HTMLElement
   nav!: Nav
   private scene: Scene | null = null
+  private failed = false
   private last = performance.now()
   private trackCache = new Map<string, Track>()
 
@@ -89,6 +90,7 @@ export class App {
     this.input.flush()
     this.input.setTouchVisible(false)
     this.scene = next
+    this.failed = false
     next.enter()
   }
 
@@ -96,8 +98,14 @@ export class App {
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - this.last) / 1000)
       this.last = now
-      this.globalKeys()
-      this.scene?.update(dt)
+      // keep the loop alive even if a scene throws; one bad frame shouldn't freeze the game
+      try {
+        this.globalKeys()
+        this.scene?.update(dt)
+      } catch (err) {
+        if (!this.failed) console.error('Scene update failed:', err)
+        this.failed = true
+      }
       requestAnimationFrame(frame)
     }
     requestAnimationFrame(frame)

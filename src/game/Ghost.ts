@@ -1,3 +1,5 @@
+import type { Track } from './Track'
+
 /** A recorded lap: `frames` is flat [x, y, angle, x, y, angle, ...] sampled every `1/hz` seconds. */
 export interface GhostData {
   time: number
@@ -36,7 +38,52 @@ export class GhostRecorder {
 
 /** Plays a recorded lap back, interpolating between samples. */
 export class GhostPlayer {
+  /** arc position (along the track) of each recorded frame; enables live lap deltas */
+  private arcs: number[] | null = null
+
   constructor(readonly data: GhostData) {}
+
+  /** Work out where on the circuit each recorded frame was. Call once after creating the player. */
+  bindTrack(track: Track) {
+    const f = this.data.frames
+    const n = f.length / 3
+    const L = track.length
+    const arcs: number[] = []
+    let hint: number | undefined
+    let lastS = 0
+    let total = 0
+    for (let i = 0; i < n; i++) {
+      const p = track.project({ x: f[i * 3], y: f[i * 3 + 1] }, hint)
+      hint = p.index
+      if (i === 0) total = p.s > L / 2 ? p.s - L : p.s
+      else {
+        let ds = p.s - lastS
+        if (ds > L / 2) ds -= L
+        else if (ds < -L / 2) ds += L
+        total += ds
+      }
+      lastS = p.s
+      arcs.push(i === 0 ? total : Math.max(arcs[i - 1], total))
+    }
+    this.arcs = arcs
+  }
+
+  /** Seconds into the lap at which the ghost reached arc position `arc`, or null if unknown. */
+  timeAtArc(arc: number): number | null {
+    const a = this.arcs
+    if (!a || a.length < 2 || arc < a[0] || arc > a[a.length - 1]) return null
+    let lo = 0
+    let hi = a.length - 1
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (a[mid] < arc) lo = mid + 1
+      else hi = mid
+    }
+    const i = Math.max(1, lo)
+    const span = a[i] - a[i - 1] || 1
+    const k = (arc - a[i - 1]) / span
+    return (i - 1 + k) / this.data.hz
+  }
 
   /** Position at `t` seconds into the lap, or null once the lap is over. */
   at(t: number): { x: number; y: number; angle: number } | null {

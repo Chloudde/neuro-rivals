@@ -56,7 +56,8 @@ export function append(el: Element, children: Child[]) {
 }
 
 export function clear(el: Element) {
-  while (el.firstChild) el.removeChild(el.firstChild)
+  // replaceChildren is atomic: removing a focused node one by one can fire blur handlers mid-loop
+  el.replaceChildren()
 }
 
 /** 83.456 -> "1:23.456" */

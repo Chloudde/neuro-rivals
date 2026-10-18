@@ -40,6 +40,8 @@ export class RaceScene implements Scene {
   private fastest: { time: number; name: string } | null = null
   private newRecords: string[] = []
   private ghostBest: number | null = null
+  /** your best lap on this track, replayed as the ghost and used for the live delta */
+  private pbGhost: GhostPlayer | null = null
   private missingRivals = false
 
   constructor(
@@ -82,18 +84,26 @@ export class RaceScene implements Scene {
     this.bestLap = records.bestLap ?? null
     this.ghostBest = records.bestLap ?? null
     const ghost = getGhost(def.id)
-    if (ghost && settings.showGhost) this.view.ghost = new GhostPlayer(ghost)
+    if (ghost) this.setPbGhost(ghost)
+    this.view.ghost = settings.showGhost ? this.pbGhost : null
 
     this.hud = new Hud(app.ui, this.race, !isRace)
     app.input.setTouchVisible(true)
     sfx.startEngine()
+    document.addEventListener('visibilitychange', this.onVisibility)
     this.hud.say('Get ready…', 'info', 900)
     if (this.missingRivals) {
       this.hud.toast('No trained rivals for this track yet: open the Lab or pick another track.')
     }
   }
 
+  /** pause automatically when the tab is hidden, so you don't crash while alt-tabbed */
+  private onVisibility = () => {
+    if (document.hidden && !this.resultsShown && !this.paused) this.setPaused(true)
+  }
+
   exit() {
+    document.removeEventListener('visibilitychange', this.onVisibility)
     this.app.renderer.night = false
     sfx.stopEngine()
     this.hud.destroy()
@@ -116,8 +126,7 @@ export class RaceScene implements Scene {
     if (input.consume('KeyG')) {
       const s = getSettings()
       updateSettings({ showGhost: !s.showGhost })
-      view.ghost =
-        !s.showGhost && getGhost(race.track.id) ? new GhostPlayer(getGhost(race.track.id)!) : null
+      view.ghost = !s.showGhost ? this.pbGhost : null
       hud.toast(!s.showGhost ? 'Ghost on' : 'Ghost off')
     }
     if (input.consume('KeyR') && !this.paused) race.recoverPlayer()
@@ -151,9 +160,22 @@ export class RaceScene implements Scene {
 
     view.draw(dt)
     hud.update(dt, player, this.bestLap, this.lastLap)
+    this.updateDelta()
 
     if (race.state === 'finished' && !this.resultsShown) this.showResults()
     this.study?.update()
+  }
+
+  /** Live gap to your best lap: how far ahead/behind the ghost you are at this exact spot. */
+  private updateDelta() {
+    const c = this.race.player?.car
+    if (!c || !this.pbGhost || c.finished || this.race.state !== 'racing' || c.lapsCompleted < 1) {
+      this.hud.setDelta(null)
+      return
+    }
+    const arc = c.distance - c.lapsCompleted * this.race.track.length
+    const ghostT = this.pbGhost.timeAtArc(arc)
+    this.hud.setDelta(ghostT === null ? null : c.lapTime - ghostT)
   }
 
   // ----------------------------------------------------------------- events
@@ -211,6 +233,11 @@ export class RaceScene implements Scene {
     }
   }
 
+  private setPbGhost(data: Parameters<typeof saveGhost>[1]) {
+    this.pbGhost = new GhostPlayer(data)
+    this.pbGhost.bindTrack(this.race.track)
+  }
+
   private recordLap(time: number, ghost: Parameters<typeof saveGhost>[1]) {
     const rec = getRecords(this.race.track.id)
     if (rec.bestLap === undefined || time < rec.bestLap) {
@@ -218,6 +245,9 @@ export class RaceScene implements Scene {
       rec.bestLapBy = getSettings().playerName
       saveRecords(this.race.track.id, rec)
       saveGhost(this.race.track.id, ghost)
+      // the lap just set becomes the ghost/delta reference from the next lap on
+      this.setPbGhost(ghost)
+      if (getSettings().showGhost) this.view.ghost = this.pbGhost
       if (!this.newRecords.includes('Best lap')) this.newRecords.push('Best lap')
       grant('lap-record')
     }

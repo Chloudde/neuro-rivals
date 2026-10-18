@@ -15,6 +15,7 @@ export class Sfx {
   private skidGain: GainNode | null = null
   private nitroGain: GainNode | null = null
 
+  private engineWanted = false
   volume = 0.5
   muted = false
 
@@ -38,6 +39,9 @@ export class Sfx {
     const d = buf.getChannelData(0)
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
     this.noiseBuf = buf
+
+    // a race may have started before the first click/keypress unlocked audio
+    if (this.engineWanted) this.startEngine()
   }
 
   private applyVolume() {
@@ -57,6 +61,7 @@ export class Sfx {
   // ----------------------------------------------------------- engine loop
 
   startEngine() {
+    this.engineWanted = true
     const ctx = this.ctx
     if (!ctx || !this.master || this.engineOsc) return
     this.engineGain = ctx.createGain()
@@ -123,6 +128,7 @@ export class Sfx {
   }
 
   stopEngine() {
+    this.engineWanted = false
     const ctx = this.ctx
     if (!ctx) return
     for (const g of [this.engineGain, this.skidGain, this.nitroGain]) {

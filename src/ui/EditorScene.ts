@@ -1,7 +1,7 @@
 import { sfx } from '../game/Audio'
 import { clamp, pointToSegment, type Vec2 } from '../game/math'
 import { Track, type TrackDef, type TrackReport } from '../game/Track'
-import { getCustomTracks, getSettings, saveCustomTracks, updateSettings } from '../storage'
+import { getCustomTracks, getSettings, remove, saveCustomTracks, updateSettings } from '../storage'
 import type { App, Scene } from './App'
 import { clear, h } from './dom'
 
@@ -39,6 +39,8 @@ export class EditorScene implements Scene {
   private snap = true
   private panel!: HTMLElement
   private saveFlash = 0
+  private sig = ''
+  private sigFor = ''
   private validateTimer = 0
   private cleanups: (() => void)[] = []
 
@@ -61,6 +63,7 @@ export class EditorScene implements Scene {
         custom: true,
       }
     } else this.def = this.blank()
+    this.baseline()
 
     this.panel = h('div', { class: 'editor-panel panel' })
     this.app.ui.append(h('div', { class: 'screen editor' }, this.panel))
@@ -104,8 +107,29 @@ export class EditorScene implements Scene {
     if (validate) this.report = this.track.validate()
   }
 
+  private signature() {
+    return JSON.stringify([this.def.points, this.def.width])
+  }
+
+  /** Remember the layout as loaded, so later edits can be detected. */
+  private baseline() {
+    this.sigFor = this.def.id
+    this.sig = this.signature()
+  }
+
+  /** Changing the layout makes old lap times and ghosts meaningless, so drop them. */
+  private dropStaleData() {
+    const sig = this.signature()
+    if (this.sigFor === this.def.id && this.sig !== sig) {
+      remove(`ghost:${this.def.id}`)
+      remove(`records:${this.def.id}`)
+    }
+    this.baseline()
+  }
+
   private save() {
     if (!this.def || this.def.points.length < 4) return
+    this.dropStaleData()
     const list = getCustomTracks()
     const i = list.findIndex((t) => t.id === this.def.id)
     if (i >= 0) list[i] = this.def
@@ -127,19 +151,25 @@ export class EditorScene implements Scene {
       maxX = Math.max(maxX, p.x)
       maxY = Math.max(maxY, p.y)
     }
-    r.cam.x = (minX + maxX) / 2
-    r.cam.y = (minY + maxY) / 2
-    const panelW = 340
-    r.cam.zoom = clamp(
-      Math.min(
-        (window.innerWidth - panelW - 120) / (maxX - minX || 1),
-        (window.innerHeight - 120) / (maxY - minY || 1),
-      ),
-      0.08,
-      1.2,
-    )
-    // shift the view so the track sits right of the panel
-    r.cam.x -= panelW / 2 / r.cam.zoom
+    const cx = (minX + maxX) / 2
+    const cy = (minY + maxY) / 2
+    const w = maxX - minX || 1
+    const h = maxY - minY || 1
+    const W = window.innerWidth
+    const H = window.innerHeight
+    if (W < 900) {
+      // phone layout: the panel sits on top, so use the lower part of the screen
+      const availH = H * 0.5 - 30
+      r.cam.zoom = clamp(Math.min((W - 60) / w, availH / h), 0.03, 1.2)
+      r.cam.x = cx
+      r.cam.y = cy - (H * 0.74 - H / 2) / r.cam.zoom
+    } else {
+      // desktop: panel on the left, so centre the circuit in the space to its right
+      const panelW = 340
+      r.cam.zoom = clamp(Math.min((W - panelW - 120) / w, (H - 120) / h), 0.03, 1.2)
+      r.cam.x = cx - panelW / 2 / r.cam.zoom
+      r.cam.y = cy
+    }
   }
 
   // ------------------------------------------------------------------ input
@@ -223,7 +253,7 @@ export class EditorScene implements Scene {
       e.preventDefault()
       const r = this.app.renderer
       const before = r.screenToWorld(e.clientX, e.clientY)
-      r.cam.zoom = clamp(r.cam.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12), 0.06, 2)
+      r.cam.zoom = clamp(r.cam.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12), 0.03, 2)
       const after = r.screenToWorld(e.clientX, e.clientY)
       r.cam.x += before.x - after.x
       r.cam.y += before.y - after.y
@@ -451,6 +481,7 @@ export class EditorScene implements Scene {
     if (saveCurrent) this.save()
     this.def = def
     this.def.custom = true
+    this.baseline()
     this.rebuild(true)
     this.fitCamera()
     if (saveCurrent) this.save()
@@ -463,6 +494,7 @@ export class EditorScene implements Scene {
     this.customs = list
     if (this.def.id === id) {
       this.def = this.customs[0] ? structuredClone(this.customs[0]) : this.blank()
+      this.baseline()
       this.rebuild(true)
       this.fitCamera()
       if (!this.customs.length) this.save()

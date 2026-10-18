@@ -12,6 +12,7 @@ export class Hud {
   private lapLine = h('div', { class: 'lap-line' })
   private timeMain = h('div', { class: 'time-main' })
   private timeSub = h('div', { class: 'time-sub' })
+  private delta = h('div', { class: 'delta' })
   private board = h('div', { class: 'board' })
   private boardRows: { row: HTMLElement; dot: HTMLElement; name: HTMLElement; gap: HTMLElement }[] =
     []
@@ -43,7 +44,7 @@ export class Hud {
         h('div', { class: 'pos-line' }, this.posBig, this.posOf),
         this.lapLine,
       ),
-      h('div', { class: 'hud-tc' }, this.timeMain, this.timeSub),
+      h('div', { class: 'hud-tc' }, this.timeMain, this.timeSub, this.delta),
       timeTrial ? null : h('div', { class: 'hud-tr' }, this.board),
       h(
         'div',
@@ -92,6 +93,16 @@ export class Hud {
     this.banner.textContent = text
     this.banner.className = `banner show ${kind}`
     this.bannerTimer = ms / 1000
+  }
+
+  /** Live time difference to your best lap (negative = ahead). Pass null to hide. */
+  setDelta(sec: number | null) {
+    if (sec === null) {
+      this.delta.textContent = ''
+      return
+    }
+    this.delta.textContent = `${sec <= 0 ? '−' : '+'}${Math.abs(sec).toFixed(2)}`
+    this.delta.className = `delta ${sec <= 0 ? 'ahead' : 'behind'}`
   }
 
   /** Small corner notification. */
