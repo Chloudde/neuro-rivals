@@ -1,0 +1,26 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #0f1117;
+  color: #e6e8ef;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+#hud {
+  position: fixed;
+  top: 12px;
+  left: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre;
+  pointer-events: none;
+  text-shadow: 0 1px 2px #000;
+}
